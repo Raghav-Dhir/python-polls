@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
+from pydantic.schema import Optional, Dict
 import datetime
 from sqlalchemy.orm import Session
 from db.models import models
@@ -21,8 +22,11 @@ def get_db():
 class User(BaseModel):
     username: str
     email: str
-    created_at: datetime.datetime
-    updated_at: datetime.datetime
+    # created_at: datetime.datetime
+    # updated_at: datetime.datetime
+
+    class Config:
+        orm_mode = True
 
 class UserCreate(BaseModel):
     username: str
@@ -50,8 +54,7 @@ def get_users(db: Session, skip: int = 0, limit: int = 100):
     return db.query(models.User).offset(skip).limit(limit).all()
 
 def create_user(db: Session, user: UserCreate):
-    fake_hashed_password = user.password + "notreallyhashed"
-    db_user = models.User(email=user.email, hashed_password=fake_hashed_password)
+    db_user = models.User(username=user.username, email=user.email)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -67,13 +70,13 @@ async def root():
     return {"polls": "hello world"}
 
 @app.get("/users/", response_model=List[User])
-def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+async def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     users = get_users(db, skip=skip, limit=limit)
     return users
 
 
 @app.post("/users/", response_model=User)
-def create_user(user: UserCreate, db: Session = Depends(get_db)):
+async def post_user(user: UserCreate, db: Session = Depends(get_db)):
     db_user = get_user_by_email(db, email=user.email)
     if db_user:
         raise HTTPException(status_code=400, detail="Email already registered")
