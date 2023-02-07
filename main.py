@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from pydantic import BaseModel
-from pydantic.schema import Optional, Dict
-import datetime
+from pydantic.schema import Optional
+from datetime import datetime
 from sqlalchemy.orm import Session
 from db.models import models
 from db.db import engine, SessionLocal
@@ -19,18 +19,22 @@ def get_db():
         db.close()
 
 
-class User(BaseModel):
-    username: str
-    email: str
-    # created_at: datetime.datetime
-    # updated_at: datetime.datetime
-
+class UserBase(BaseModel):
+    email: Optional[str] = None
     class Config:
         orm_mode = True
 
-class UserCreate(BaseModel):
+class UserCreate(UserBase):
     username: str
     email: str
+
+class UserInDBBase(UserBase):
+    id: Optional[int] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+
+class User(UserInDBBase):
+    pass
 
 class Poll(BaseModel):
     title: str
@@ -38,8 +42,8 @@ class Poll(BaseModel):
     is_voting_active: bool
     is_add_choices_active: bool
     created_by: int
-    created_at: datetime.datetime
-    updated_at: datetime.datetime
+    created_at: datetime = datetime.now()
+    updated_at: datetime = datetime.now()
 
 
 def get_user(db: Session, user_id: int):
